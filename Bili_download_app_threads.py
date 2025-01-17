@@ -8,6 +8,7 @@ import sys
 DOWNLOAD_DIR = "D:/Taylor/Downloads/Video"
 BROWSER_COOKIES = 'firefox'
 FFMPEG_PATH = os.path.join("ffmpeg", "ffmpeg.exe")  # 更加健壮的路径连接
+VIDEO_FORMAT = 'bestvideo+bestaudio[ext=mp4]/bestvideo+bestaudio[ext=mkv]/best[ext=mp4]/best[ext=mkv]/bestvideo+bestaudio/best'
 FORMAT_VIDEO = ''
 
 
@@ -30,35 +31,32 @@ def get_ffmpeg_path():
     # 如果以上都没有，返回指定的路径
     return os.path.join("ffmpeg", "ffmpeg.exe")
 
-def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOKIES):
+def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOKIES, quiet=False):
     """配置 yt-dlp 参数"""
     return {
-        'format': 'bestvideo+bestaudio[ext=mp4]/'
-                  'bestvideo+bestaudio[ext=mkv]/'
-                  'best[ext=mp4]/best[ext=mkv]/'
-                  'bestvideo+bestaudio/best',  # 优先下载 MP4 或 MKV 格式的最佳视频+音频组合
+        'format': 'bestvideo+bestaudio/best',  # 优先下载 MP4 或 MKV 格式的最佳视频+音频组合
         'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),  # 设置输出文件名和路径
         'ffmpeg_location': FFMPEG_PATH,  # 指定 ffmpeg 路径
         'postprocessors': [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4',  # 转换视频格式为 mp4
-            #'when': lambda info: info['ext'] not in ['mp4', 'mkv']  # 仅当格式不是 MP4 或 MKV 时进行转换
         }],
-        'quiet': False,  # 显示下载进度
-        'cookiesfrombrowser': (cookies,) if "bilibili" in url else None,  # 如果是 Bilibili 使用浏览器 cookies
+        'quiet': quiet,  # 显示下载进度
+        'cookiesfrombrowser': (cookies,) if "bilibili" or "youtube" in url else None,  # 如果是 Bilibili 使用浏览器 cookies
         'external_downloader': 'aria2c',  # 指定使用 aria2c 作为外部下载器。
-        'external_downloader_args': ['-x', '16', '-s', '16', '-k', '1M'],  # 配置传递给 aria2c 的命令行参数，用于优化下载性能：
-        #   -x 16: 设置每个服务器的最大连接数为 16。aria2c 会尝试建立 16 个连接到同一个服务器来下载文件，提高下载速度。
-        #   -s 16: 设置将每个下载分割成 16 个部分。结合 -x 参数，aria2c 会使用最多 16 个连接同时下载这些部分，进一步提高并行性。
+        'external_downloader_args': ['-x', '8', '-s', '8', '-k', '1M'],  # 配置传递给 aria2c 的命令行参数，用于优化下载性能：
+        #   -x 16: 设置每个服务器的最大连接数为 8。aria2c 会尝试建立 8 个连接到同一个服务器来下载文件，提高下载速度。
+        #   -s 16: 设置将每个下载分割成 8 个部分。结合 -x 参数，aria2c 会使用最多 8 个连接同时下载这些部分，进一步提高并行性。
         #   -k 1M: 设置最小分块大小为 1MB。
     }
 
 
 def download_video(url, cookies=BROWSER_COOKIES, output_path=DOWNLOAD_DIR):
     """下载视频并处理错误"""
+    ydl_opts = configure_yt_dlp_options(url, output_path, cookies,quiet=True)
     try:
         # 第一步：获取视频信息
-        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print("正在获取视频信息...")
             info_dict = ydl.extract_info(url, download=False)  # 获取视频信息，但不下载
             video_title = info_dict.get('title', 'Unknown Title')
@@ -73,7 +71,6 @@ def download_video(url, cookies=BROWSER_COOKIES, output_path=DOWNLOAD_DIR):
             print(f"分辨率：{video_resolution[0]}p * {video_resolution[1]}p")
 
         # 第二步：配置 yt-dlp 选项并下载视频
-        ydl_opts = configure_yt_dlp_options(url, output_path, cookies)
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print("开始下载...")
             ydl.download([url])
