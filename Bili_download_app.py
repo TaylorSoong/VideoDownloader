@@ -1,3 +1,4 @@
+import shutil
 import time
 import yt_dlp
 import os
@@ -15,9 +16,17 @@ def clear_screen():
 
 def get_ffmpeg_path():
     """获取 ffmpeg 的路径"""
+    # 首先尝试从系统路径中获取 ffmpeg
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        return ffmpeg_path
+
+    # 如果系统路径中没有 ffmpeg，尝试从打包后的环境中获取
     if getattr(sys, 'frozen', False):  # 如果是打包后的环境
         return os.path.join(sys._MEIPASS, "ffmpeg", "ffmpeg.exe")
-    return os.path.join("ffmpeg", "ffmpeg.exe")  # 调试模式
+
+    # 如果以上都没有，返回指定的路径
+    return os.path.join("ffmpeg", "ffmpeg.exe")
 
 def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOKIES):
     """配置 yt-dlp 参数"""
@@ -30,6 +39,7 @@ def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOK
             'preferedformat': 'mp4',  # 转换视频格式为 mp4
         }],
         'quiet': False,  # 显示下载进度
+        'merge_output_format': 'mp4',
         'cookiesfrombrowser': (cookies,) if "bilibili" in url else None,  # 如果是 Bilibili 使用浏览器 cookies
     }
 
