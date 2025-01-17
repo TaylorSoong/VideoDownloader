@@ -1,3 +1,4 @@
+import shutil
 import time
 import yt_dlp
 import os
@@ -14,11 +15,20 @@ def clear_screen():
     """清除终端屏幕，支持 Windows 和其他系统"""
     os.system('cls' if os.name == 'nt' else 'clear')
 
+
 def get_ffmpeg_path():
     """获取 ffmpeg 的路径"""
+    # 首先尝试从系统路径中获取 ffmpeg
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        return ffmpeg_path
+
+    # 如果系统路径中没有 ffmpeg，尝试从打包后的环境中获取
     if getattr(sys, 'frozen', False):  # 如果是打包后的环境
         return os.path.join(sys._MEIPASS, "ffmpeg", "ffmpeg.exe")
-    return os.path.join("ffmpeg", "ffmpeg.exe")  # 调试模式
+
+    # 如果以上都没有，返回指定的路径
+    return os.path.join("ffmpeg", "ffmpeg.exe")
 
 def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOKIES):
     """配置 yt-dlp 参数"""
@@ -32,7 +42,7 @@ def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOK
         'postprocessors': [{
             'key': 'FFmpegVideoConvertor',
             'preferedformat': 'mp4',  # 转换视频格式为 mp4
-            'when': lambda info: info['ext'] not in ['mp4', 'mkv']  # 仅当格式不是 MP4 或 MKV 时进行转换
+            #'when': lambda info: info['ext'] not in ['mp4', 'mkv']  # 仅当格式不是 MP4 或 MKV 时进行转换
         }],
         'quiet': False,  # 显示下载进度
         'cookiesfrombrowser': (cookies,) if "bilibili" in url else None,  # 如果是 Bilibili 使用浏览器 cookies
@@ -46,27 +56,29 @@ def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOK
 
 def download_video(url, cookies=BROWSER_COOKIES, output_path=DOWNLOAD_DIR):
     """下载视频并处理错误"""
-    ydl_opts = configure_yt_dlp_options(url, output_path, cookies)
-
-    # 使用 yt-dlp 下载视频
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # 第一步：获取视频信息
+        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
             print("正在获取视频信息...")
-            info_dict = ydl.extract_info(url, download=False)
+            info_dict = ydl.extract_info(url, download=False)  # 获取视频信息，但不下载
             video_title = info_dict.get('title', 'Unknown Title')
             video_duration = round(info_dict.get('duration', 0))  # 获取视频长度，单位秒
-            video_resolution = [info_dict.get('width', 'Unknown resolution'), info_dict.get('height', 'Unknown resolution')]  # 获取视频的分辨率高度（若没有，默认 'Unknown resolution'）
+            video_resolution = [info_dict.get('width', 'Unknown resolution'), info_dict.get('height', 'Unknown resolution')]  # 获取视频的分辨率
             uploader = info_dict.get('uploader', 'Unknown uploader')  # 获取上传者的名称
 
             # 打印视频信息
             print(f"视频标题：{video_title}")
             print(f"上传者：{uploader}")
             print(f"视频时长：{video_duration // 60} 分 {video_duration % 60} 秒")
-            print(f"分辨率：{video_resolution[0]}p * {video_resolution[1]}p")  # 假设视频的分辨率高度就是 `height` 字段
+            print(f"分辨率：{video_resolution[0]}p * {video_resolution[1]}p")
 
+        # 第二步：配置 yt-dlp 选项并下载视频
+        ydl_opts = configure_yt_dlp_options(url, output_path, cookies)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             print("开始下载...")
             ydl.download([url])
             print(f"{video_title} 下载完成！")
+
     except yt_dlp.DownloadError as e:
         print(f"下载失败: {e}")
     except Exception as e:
