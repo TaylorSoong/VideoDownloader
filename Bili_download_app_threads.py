@@ -8,7 +8,6 @@ import sys
 DOWNLOAD_DIR = "D:/Taylor/Downloads/Video"
 BROWSER_COOKIES = 'firefox'
 FFMPEG_PATH = os.path.join("ffmpeg", "ffmpeg.exe")  # 更加健壮的路径连接
-VIDEO_FORMAT = 'bestvideo+bestaudio[ext=mp4]/bestvideo+bestaudio[ext=mkv]/best[ext=mp4]/best[ext=mkv]/bestvideo+bestaudio/best'
 FORMAT_VIDEO = ''
 
 
@@ -34,7 +33,7 @@ def get_ffmpeg_path():
 def configure_yt_dlp_options(url, output_path=DOWNLOAD_DIR, cookies=BROWSER_COOKIES, quiet=False):
     """配置 yt-dlp 参数"""
     return {
-        'format': 'bestvideo+bestaudio/best',  # 优先下载 MP4 或 MKV 格式的最佳视频+音频组合
+        'format': 'bestvideo+bestaudio/best',  #下载最佳视频+音频组合
         'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),  # 设置输出文件名和路径
         'ffmpeg_location': FFMPEG_PATH,  # 指定 ffmpeg 路径
         'postprocessors': [{
