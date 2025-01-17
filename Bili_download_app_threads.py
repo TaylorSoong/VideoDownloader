@@ -8,7 +8,6 @@ import sys
 DOWNLOAD_DIR = "D:/Taylor/Downloads/Video"
 BROWSER_COOKIES = 'firefox'
 FFMPEG_PATH = os.path.join("ffmpeg", "ffmpeg.exe")  # 更加健壮的路径连接
-FORMAT_VIDEO = ''
 
 
 def clear_screen():
